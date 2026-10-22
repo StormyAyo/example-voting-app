@@ -90,7 +90,7 @@ jobs:
             "./${{ matrix.service }}"
 
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: local/voting-${{ matrix.service }}:${{ github.sha }}
           format: table
