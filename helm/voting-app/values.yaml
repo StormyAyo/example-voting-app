@@ -1,0 +1,26 @@
+image:
+  tag: "7d8a4bc7bce6a459e95cf143acaf1f3de68b9d78"
+  pullPolicy: IfNotPresent
+
+vote:
+  replicas: 1
+  servicePort: 80
+
+result:
+  replicas: 1
+  servicePort: 80
+
+worker:
+  replicas: 1
+
+redis:
+  image: redis:7-alpine
+  servicePort: 6379
+
+postgres:
+  image: postgres:15-alpine
+  servicePort: 5432
+  database: postgres
+  username: postgres
+  storage: 2Gi
+  storageClass: ebs-csi-gp3
