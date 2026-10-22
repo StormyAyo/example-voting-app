@@ -1,0 +1,14 @@
+.git
+.gitignore
+.vscode
+.env
+.env.*
+!.env.example
+*.log
+**/bin/
+**/obj/
+**/node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
