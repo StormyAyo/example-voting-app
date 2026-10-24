@@ -292,7 +292,7 @@ Destroying infrastructure can interrupt the application and may affect persisten
 
 ## Capstone evidence
 
-- [Latest successful GitHub Actions run](https://github.com/StormyAyo/example-voting-app/actions/runs/40045031484)
+- [Latest successful GitHub Actions run](https://github.com/StormyAyo/example-voting-app/actions/runs/40047769580)
 - [Source repository](https://github.com/StormyAyo/example-voting-app)
 - Helm chart: `helm/voting-app/`
 - Terraform configuration: `terraform/`
