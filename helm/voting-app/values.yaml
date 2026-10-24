@@ -1,5 +1,5 @@
 image:
-  tag: "e60910fdc9b606d7354f40849ea13ca42091274e"
+  tag: "9b59ba8e5ee54951154d3f412a3a73baba29cb0e"
   pullPolicy: IfNotPresent
 
 vote:
