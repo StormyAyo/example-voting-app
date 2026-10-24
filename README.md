@@ -1,110 +1,94 @@
-# Example Voting App
+# Example Voting App — DevOps Capstone
 
-A simple distributed application running across multiple Docker containers.
+## 1. Project Overview
 
-## Getting started
+This project extends the Docker Example Voting App with container security improvements, automated CI/CD, Kubernetes deployment using Helm, and infrastructure provisioning using Terraform.
 
-Download [Docker Desktop](https://www.docker.com/products/docker-desktop) for Mac or Windows. [Docker Compose](https://docs.docker.com/compose) will be automatically installed. On Linux, make sure you have the latest version of [Compose](https://docs.docker.com/compose/install/).
+The application demonstrates a distributed system in which votes move through a queue to a worker, are stored in PostgreSQL, and are displayed by the results application.
 
-This solution uses Python, Node.js, .NET, with Redis for messaging and Postgres for storage.
-
-Run in this directory to build and run the app:
-
-```shell
-docker compose up
-```
-
-The `vote` app will be running at [http://localhost:8080](http://localhost:8080), and the `results` will be at [http://localhost:8081](http://localhost:8081).
-
-Alternately, if you want to run it on a [Docker Swarm](https://docs.docker.com/engine/swarm/), first make sure you have a swarm. If you don't, run:
-
-```shell
-docker swarm init
-```
-
-Once you have your swarm, in this directory run:
-
-```shell
-docker stack deploy --compose-file docker-stack.yml vote
-```
-
-## Run the app in Kubernetes
-
-The folder k8s-specifications contains the YAML specifications of the Voting App's services.
-
-Run the following command to create the deployments and services. Note it will create these resources in your current namespace (`default` if you haven't changed it.)
-
-```shell
-kubectl create -f k8s-specifications/
-```
-
-The `vote` web app is then available on port 31000 on each host of the cluster, the `result` web app is available on port 31001.
-
-To remove them, run:
-
-```shell
-kubectl delete -f k8s-specifications/
-```
-
-## Architecture
-
-![Architecture diagram](architecture.excalidraw.png)
-
-* A front-end web app in [Python](/vote) which lets you vote between two options
-* A [Redis](https://hub.docker.com/_/redis/) which collects new votes
-* A [.NET](/worker/) worker which consumes votes and stores them in…
-* A [Postgres](https://hub.docker.com/_/postgres/) database backed by a Docker volume
-* A [Node.js](/result) web app which shows the results of the voting in real time
-
-## Notes
-
-The voting application only accepts one vote per client browser. It does not register additional votes if a vote has already been submitted from a client.
-
-This isn't an example of a properly architected perfectly designed distributed app... it's just a simple
-example of the various types of pieces and languages you might see (queues, persistent data, etc), and how to
-deal with them in Docker at a basic level.
-
----
-
-# DevOps Capstone
-
-## Project overview
-
-This project extends the Example Voting App with container security, automated CI/CD, Kubernetes deployment using Helm, and infrastructure provisioning with Terraform.
-
-The application contains the following components:
+### Application components
 
 - **Vote:** Python web application for submitting a vote.
 - **Redis:** Queue for incoming votes.
 - **Worker:** .NET service that transfers votes from Redis to PostgreSQL.
-- **PostgreSQL:** Persistent database for vote records.
-- **Result:** Node.js web application that displays the current voting results.
+- **PostgreSQL:** Database for persistent vote records.
+- **Result:** Node.js web application that displays voting results.
 
 ### Application flow
 
 `Vote → Redis → Worker → PostgreSQL → Result`
 
-## Containerization and security
+## 2. Repository Structure
+## Architecture
 
-The application services have Dockerfiles and `.dockerignore` files. The application containers are configured to run as non-root users where applicable.
+![Architecture diagram](architecture.excalidraw.png)
 
-Build and start the local application from the repository root:
+Important project paths:
+
+| Path | Purpose |
+|---|---|
+| `vote/` | Vote application and Docker configuration |
+| `result/` | Results application and Docker configuration |
+| `worker/` | Background worker and Docker configuration |
+| `seed-data/` | Seed-data container |
+| `docker-compose.yml` | Local multi-container application |
+| `.github/workflows/ci-cd.yml` | GitHub Actions pipeline |
+| `terraform/` | Terraform infrastructure configuration |
+| `helm/voting-app/` | Helm chart and values |
+| `architecture.excalidraw.png` | Architecture diagram |
+
+## 3. Prerequisites
+
+Install and configure the tools required for the phase you intend to run:
+
+- Git
+- Docker Engine and Docker Compose
+- AWS CLI with authorized AWS credentials
+- Terraform
+- `kubectl`
+- Helm
+- GitHub CLI (`gh`), if you want to inspect workflow runs from the terminal
+
+For Kubernetes deployment, you also need an accessible Amazon EKS cluster and appropriate AWS and Kubernetes permissions.
+
+Check the relevant tool installations:
+
+```bash
+git --version
+docker --version
+docker compose version
+terraform version
+kubectl version --client
+helm version
+aws --version
+```
+
+## 4. Run the Application Locally
+
+From the repository root, build and start the application:
 
 ```bash
 docker compose up --build -d
 ```
 
-Check the services:
+Check container status:
 
 ```bash
 docker compose ps
 ```
 
-View application logs:
+View logs when troubleshooting:
 
 ```bash
 docker compose logs --tail=100
 ```
+
+The local application is available at:
+
+- Vote: `http://localhost:8080`
+- Results: `http://localhost:8081`
+
+Submit a vote and refresh the results page to verify the end-to-end flow.
 
 Stop the local application:
 
@@ -112,65 +96,119 @@ Stop the local application:
 docker compose down
 ```
 
-Review each Dockerfile and Compose configuration before making changes to image versions, user permissions, or exposed ports.
+This command stops and removes the Compose-managed containers and network. Review your Compose configuration and volumes before removing persistent data.
 
-## CI/CD with GitHub Actions
+## 5. Containerization and Security
 
-The GitHub Actions workflow is defined in:
+The application has Dockerfiles and `.dockerignore` files for the relevant services. Application containers are configured to run as non-root users where applicable.
+
+The project also includes container image scanning in its CI/CD workflow.
+
+When changing Dockerfiles or base images:
+
+- Keep base images pinned to intentional versions or digests where appropriate.
+- Avoid running application processes as root.
+- Exclude unnecessary files from build contexts.
+- Do not include passwords, tokens, or other secrets in images.
+- Review image scan findings before publishing or deploying.
+
+The automated workflow provides repeatable validation and image publication. A successful image scan does not guarantee that an image is free of all vulnerabilities.
+
+## 6. CI/CD with GitHub Actions
+
+The workflow is located at:
 
 `.github/workflows/ci-cd.yml`
 
-The workflow validates the application and builds, scans, and publishes container images to GitHub Container Registry (GHCR).
+It validates the application, builds the required images, scans images with Trivy, and publishes SHA-tagged images to GitHub Container Registry (GHCR).
 
 ### Verified successful workflow run
 
 - **Workflow:** Voting App CI
 - **Branch:** `main`
-- **Run ID:** `40036497015`
-- **Commit:** `408c12d6ed945c5530384f096ccb32f14aac4c77`
-- **Conclusion:** Success
+- **Run ID:** `40076397685`
+- **Commit:** `a97d0f4` — Update Helm chart to verified image SHA
+- **Result:** All five jobs passed
 
-All five jobs passed in this run:
+The successful jobs were:
 
 1. Test application
-2. Build, scan, and publish seed-data image
-3. Build, scan, and publish worker image
-4. Build, scan, and publish result image
-5. Build, scan, and publish vote image
+2. Build, scan, and publish the result image
+3. Build, scan, and publish the vote image
+4. Build, scan, and publish the worker image
+5. Build, scan, and publish the seed-data image
 
-[View the successful GitHub Actions run](https://github.com/StormyAyo/example-voting-app/actions/runs/40036497015)
+[View the successful GitHub Actions run](https://github.com/StormyAyo/example-voting-app/actions/runs/40076397685)
+
+The workflow output included non-fatal warnings about GitHub Actions Node.js runtime deprecation and the `ubuntu-latest` runner image migration. These warnings did not cause the recorded run to fail.
 
 ### Published application images
 
-The following GHCR packages were checked and contain the successful workflow commit tag:
+The application images are published to GHCR:
 
 - `ghcr.io/stormyayo/example-voting-app-vote`
 - `ghcr.io/stormyayo/example-voting-app-result`
 - `ghcr.io/stormyayo/example-voting-app-worker`
 
-Verified tag:
+The deployed application image tag verified during this deployment was:
 
-`408c12d6ed945c5530384f096ccb32f14aac4c77`
+`9b59ba8e5ee54951154d3f412a3a73baba29cb0e`
 
-The deployed application-fix image tag is:
+The workflow run above belongs to commit `a97d0f4`, while the deployed application images use the earlier SHA tag shown above. These are different references: the workflow commit identifies the source revision that ran through CI, and the image tag identifies the application image deployed by Helm.
 
-`e60910fdc9b606d7354f40849ea13ca42091274e`
+For a future deployment, confirm that the selected SHA tag exists in GHCR before upgrading the Helm release.
 
-Use an image tag that exists in GHCR when deploying. The CI workflow commit and deployed application image tag may differ because they represent different commits.
+## 7. Infrastructure as Code with Terraform
 
-## Kubernetes deployment with Helm
+Terraform configuration is maintained in `terraform/`.
+
+From the repository root:
+
+```bash
+cd terraform
+terraform init
+terraform fmt -check -recursive
+terraform validate
+terraform plan
+```
+
+Review the plan before applying infrastructure changes. Confirm the AWS account, region, cluster configuration, and estimated costs.
+
+Only apply changes after reviewing and approving the plan:
+
+```bash
+terraform apply
+```
+
+To review a proposed teardown:
+
+```bash
+terraform plan -destroy
+```
+
+If you decide to remove the infrastructure, review the proposed actions and data-retention implications before running:
+
+```bash
+terraform destroy
+```
+
+**Important:** destroying infrastructure can interrupt the application and may affect persistent data. A successful `terraform validate` confirms that the configuration is valid; it does not independently prove that a new cluster can be recreated successfully.
+
+## 8. Kubernetes Deployment with Helm
 
 The Helm chart is located at:
 
 `helm/voting-app/`
 
-Validate the chart:
+### Validate the chart
+
+Run from the repository root:
 
 ```bash
 helm lint helm/voting-app
 ```
 
-Render the Kubernetes manifests locally:
+Render the manifests locally:
 
 ```bash
 helm template voting helm/voting-app \
@@ -178,7 +216,7 @@ helm template voting helm/voting-app \
   --values helm/voting-app/values.yaml
 ```
 
-Deploy or upgrade the release:
+### Deploy or upgrade the application
 
 ```bash
 helm upgrade --install voting helm/voting-app \
@@ -188,13 +226,15 @@ helm upgrade --install voting helm/voting-app \
   --timeout 5m
 ```
 
-Check the release and deployed resources:
+### Check the release and Kubernetes resources
 
 ```bash
 helm status voting --namespace default
 helm history voting --namespace default
 kubectl get deployments,pods,services,pvc --namespace default
 ```
+
+Check the pods and wait for the application deployments to become available before performing the end-to-end test.
 
 ### Access the applications locally
 
@@ -216,83 +256,118 @@ kubectl port-forward service/voting-result 8083:80
 
 Open `http://localhost:8083`.
 
-### Persistent storage
+These commands require a working Kubernetes context and the corresponding services to exist in the `default` namespace.
 
-PostgreSQL uses the `voting-postgres-data` persistent volume claim. The verified deployment had a bound 2 GiB claim using the `gp2` StorageClass.
+## 9. PostgreSQL Persistent Storage
 
-**Important:** Do not delete the PostgreSQL PVC when troubleshooting or uninstalling the Helm release if you need to preserve stored votes. Review the reclaim policy and backup requirements before deleting persistent storage.
+PostgreSQL uses the `voting-postgres-data` PersistentVolumeClaim.
 
-## Helm rollback validation
+The verified deployment used:
 
-A controlled bad image-tag upgrade was tested using the tag `bad-demo-tag`. The upgrade failed as expected, and the release was rolled back to the known-good revision.
+- **Claim:** `voting-postgres-data`
+- **Capacity:** 2 GiB
+- **StorageClass:** `ebs-csi-gp3`
+- **Provisioner:** `ebs.csi.aws.com`
+- **Observed state:** `Bound`
 
-The rollback command was:
+Check the claim:
 
 ```bash
-helm rollback voting 2 \
-  --namespace default \
-  --wait \
-  --timeout 5m
+kubectl get pvc voting-postgres-data --namespace default
+kubectl get storageclass ebs-csi-gp3
 ```
 
-The rollback completed successfully. Subsequent checks showed all five application deployments available, their pods running, and the PostgreSQL PVC bound.
+The EBS CSI driver and the necessary AWS permissions must be configured for dynamic EBS volume provisioning.
 
-Inspect the current release history before performing another rollback:
+**Data-retention warning:** do not delete the PostgreSQL PVC or its underlying volume if you need to preserve votes. Review the StorageClass reclaim policy, backup requirements, and recovery procedure before deleting storage or uninstalling the release.
+
+## 10. Helm Rollback Validation
+
+A controlled upgrade using an invalid image tag was tested. The upgrade failed, and the release was rolled back to a known-good revision. The application was subsequently checked to confirm that the deployments were available, the pods were running, and PostgreSQL storage remained bound.
+
+### Inspect release history
+
+Always inspect the actual revision numbers before rolling back:
 
 ```bash
 helm history voting --namespace default
 ```
 
-Revision numbers can change as new upgrades and rollbacks are performed.
+### Roll back to a known-good revision
 
-## End-to-end application validation
+Replace `<REVISION>` with the appropriate known-good revision shown in the history:
+
+```bash
+helm rollback voting <REVISION> \
+  --namespace default \
+  --wait \
+  --timeout 5m
+```
+
+Verify the result:
+
+```bash
+helm status voting --namespace default
+kubectl get deployments,pods,pvc --namespace default
+```
+
+Revision numbers change as upgrades and rollbacks are performed. Do not assume a fixed revision number will always be the correct target.
+
+## 11. End-to-End Validation
 
 The deployed application was tested by submitting votes through the vote interface and checking the results interface.
 
-Validation evidence:
+The recorded validation evidence included:
 
-- Vote interface loaded.
-- Results interface loaded.
+- Vote interface loaded successfully.
+- Results interface loaded successfully.
 - Worker logs showed votes being processed.
 - Result application logs confirmed a database connection.
 - Submitting a vote and refreshing the results interface showed the updated selection.
-- All five deployments were available after rollback.
+- All five application deployments were available after rollback.
 - PostgreSQL persistent storage was bound.
 
-The application permits one vote per client browser. Submitting a different selection from the same browser updates that client's vote rather than creating an additional independent voter.
-
-## Infrastructure as code with Terraform
-
-Terraform configuration is maintained in the `terraform/` directory.
-
-Run Terraform commands from that directory:
+To inspect application logs:
 
 ```bash
-cd terraform
-terraform init
-terraform fmt -check
-terraform validate
-terraform plan
+kubectl logs deployment/voting-worker --namespace default
+kubectl logs deployment/voting-result --namespace default
+kubectl logs deployment/voting-postgres --namespace default
 ```
 
-Review the plan before applying infrastructure changes. Confirm the AWS account, region, cluster configuration, and estimated costs.
+If a deployment has multiple pods or logs are unavailable, inspect the pod names and events:
 
-To provision infrastructure, use `terraform apply` only after reviewing and approving the plan. To remove infrastructure, review `terraform plan -destroy` before approving `terraform destroy`.
+```bash
+kubectl get pods --namespace default
+kubectl get events --namespace default --sort-by=.lastTimestamp
+```
 
-Destroying infrastructure can interrupt the application and may affect persistent data. Follow the project's storage backup and recovery requirements before cleanup.
+The application permits one vote per client browser. Submitting a different selection from the same browser updates that client's vote rather than creating another independent voter.
 
-## Secrets and operational safety
+## 12. Secrets and Operational Safety
 
 - Do not commit passwords, access keys, tokens, or kubeconfig credentials.
-- Use GitHub Actions secrets or an appropriate secret manager for credentials.
-- Review image scan results and update deprecated GitHub Actions when needed.
-- Use commit-SHA image tags for reproducible deployments.
+- Use GitHub Actions secrets or an appropriate secret manager for CI/CD credentials.
+- Kubernetes application secrets should be created and managed securely.
+- Do not paste secret values into source control or public logs.
+- Review image scan findings and update deprecated GitHub Actions when appropriate.
+- Use image tags that can be traced to a specific source revision.
 - Verify deployment health after upgrades and rollbacks.
 - Review AWS costs and clean up resources that are no longer required.
+- Confirm persistent-data backup and retention requirements before deleting storage.
 
-## Capstone evidence
+## 13. Capstone Evidence and Links
 
-- [Latest successful GitHub Actions run](https://github.com/StormyAyo/example-voting-app/actions/runs/40047769580)
 - [Source repository](https://github.com/StormyAyo/example-voting-app)
+- [Latest verified successful GitHub Actions run](https://github.com/StormyAyo/example-voting-app/actions/runs/40076397685)
 - Helm chart: `helm/voting-app/`
 - Terraform configuration: `terraform/`
+- Architecture diagram: `architecture.excalidraw.png`
+
+## 14. Project Limitations and Verification Notes
+
+This project demonstrates containerization, CI/CD, infrastructure as code, Kubernetes deployment, persistent storage, and Helm rollback.
+
+The validation results documented here reflect the commands and deployment checks performed during the project. A successful validation or workflow run should not be interpreted as proof of every possible failure mode, a fresh-cluster recreation, or complete security.
+
+Before submitting, confirm that the committed README, Terraform configuration, Helm values, workflow file, and deployed image references are consistent with the final repository state.
