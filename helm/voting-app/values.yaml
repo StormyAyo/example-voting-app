@@ -23,4 +23,4 @@ postgres:
   database: postgres
   username: postgres
   storage: 2Gi
-  storageClass: gp2
+  storageClass: ebs-csi-gp3
