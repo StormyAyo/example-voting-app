@@ -1,5 +1,5 @@
 image:
-  tag: "c7969200f1be62c389377949fd27832d662efe6d"
+  tag: "e60910fdc9b606d7354f40849ea13ca42091274e"
   pullPolicy: IfNotPresent
 
 vote:
@@ -23,4 +23,4 @@ postgres:
   database: postgres
   username: postgres
   storage: 2Gi
-  storageClass: ebs-csi-gp3
+  storageClass: gp2
